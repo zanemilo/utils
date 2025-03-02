@@ -1,144 +1,112 @@
-# Utils Toolbox
+# 📦 Zane's Developer Utilities
+**A collection of powerful, reusable utility scripts designed to streamline development, automate tasks, and enhance workflow efficiency.**
 
-This repository is a collection of utility components to help streamline development tasks, automate processes, and support machine learning experiments. The repository includes modules for logging, error handling, repository initialization, price scraping, ML experiment setup, web development scaffolding, and more.
+---
 
-## Table of Contents
+## 🚀 Overview
+This repository contains modular and production-ready utilities for:  
+✅ **Logging & Error Handling** – Robust logging setup and custom error-handling decorators.  
+✅ **Repository Automation** – Quickly initialize new Git repositories with useful templates.  
+✅ **Data Analysis** – Summarization tools for CSV files, statistics computation, and visualizations.  
+✅ **Web Development Scaffolding** – Automate project setup with HTML/CSS/JS frameworks and backend support.  
+✅ **Machine Learning Experimentation** – Dataset loaders, model training, and evaluation scripts.  
+✅ **Web Scraping & Automation** – Dynamic price scraping and automated web interactions.  
 
-- [Utils Toolbox](#utils-toolbox)
-  - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-  - [Modules](#modules)
-    - [Logger](#logger)
-    - [Error Handling](#error-handling)
-    - [Repository Initialization](#repository-initialization)
-    - [Price Scraper](#price-scraper)
-    - [ML Utilities](#ml-utilities)
-    - [Web Development Setup](#web-development-setup)
-  - [Installation](#installation)
-  - [Usage Examples](#usage-examples)
-  - [Testing](#testing)
-  - [Dependencies](#dependencies)
-  - [License](#license)
+Whether you're building software, analyzing data, or automating workflows, these utilities make your development process **faster, cleaner, and more efficient**.
 
-## Overview
+---
 
-This repository is designed as a toolbox for developers, providing modular and reusable components that can be easily integrated into various projects. Whether you need to set up logging, manage errors, initialize Git repositories, scrape product prices, run machine learning experiments, or quickly scaffold a web development project, this repo has utilities to help you get started quickly.
+## 🔧 Modules & Features
+### 📝 Logging & Error Handling
+- **Centralized Logging** – Structured logs for debugging and monitoring.
+- **Custom Error Handling** – Decorators and retry mechanisms for robust applications.
 
-## Modules
+### 🔥 Repository Initialization
+- **Quick Git Repo Setup** – Automates `README.md`, `.gitignore`, and license generation.
+- **CLI Support** – Easily initialize a repository with a single command.
 
-### Logger
+### 📊 Data Analysis & Summarization
+- **CSV Parsing & Cleaning** – Read, detect numerical columns, and remove unwanted data interactively.
+- **Statistical Computation** – Generate mean, median, mode, variance, standard deviation, and correlation matrices.
+- **Visualization** – Auto-generate **histograms, boxplots, and scatter plots** for numerical data.
 
-A configurable logging setup that outputs to both a rotating file handler and the console.  
-Usage:
-```python
-import logger
-logger.setup_logging()
-```
+### 🌐 Web Development Scaffolding
+- **Project Setup** – Automatically creates a structured web development folder.
+- **HTML/CSS/JS Framework Integration** – Optionally includes Bootstrap, Tailwind, Flask, or Express.
+- **Server Setup** – Supports both Python (Flask) and Node.js (Express) backend initialization.
 
-### Error Handling
+### 🤖 Machine Learning Utilities
+- **Dataset Loaders** – MNIST, CIFAR-10, and more.
+- **Model Training & Evaluation** – Training pipelines, loss tracking, and accuracy computation.
+- **Checkpointing** – Save and restore trained models.
 
-Provides custom exceptions, error handling decorators, context managers, and a retry mechanism to improve robustness in your applications.  
-Usage:
-```python
-from error_handling import handle_errors, ErrorHandler, retry, setup_global_exception_hook
-```
+### 🔍 Web Scraping & Automation
+- **Price Scraping** – Fetches and logs product prices dynamically.
+- **Automated Browsing** – Uses Helium to interact with web pages programmatically.
 
-### Repository Initialization
+---
 
-A CLI tool to automate Git repository creation, including setting up README and .gitignore files.  
-Usage:
+## ⚡ Installation
+1️⃣ **Clone the Repository**  
 ```bash
-python init_repo.py -n myrepo -b main -r https://github.com/username/myrepo.git
+git clone https://github.com/zanemilo/utils.git
+cd utils
 ```
-
-### Price Scraper
-
-A dynamic utility for scraping product prices using Helium.  
-Usage:
+2️⃣ **Set Up a Virtual Environment**  
 ```bash
-python price_scraper.py --product "Product Name" --url "https://example.com/product" --selector ".priceSelector" --output "price_log.txt"
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 ```
-
-### ML Utilities
-
-A robust ML module for loading datasets, building models, training, evaluation, and checkpoint management for experiments with MNIST and CIFAR-10.  
-Usage:
-```python
-from ml_utils import load_dataset, build_model, train_model, evaluate_model, save_checkpoint, load_checkpoint
-
-# Example for MNIST
-train_loader, test_loader = load_dataset('mnist', batch_size=64)
-model = build_model('mnist')
-# Define loss and optimizer
-import torch.nn as nn
-import torch.optim as optim
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-model = train_model(model, train_loader, criterion, optimizer, epochs=5, save_path='mnist_model.pth')
-accuracy = evaluate_model(model, test_loader)
-print(f"MNIST Test Accuracy: {accuracy:.2f}%")
-```
-
-Also accessible via CLI:
+3️⃣ **Install Dependencies**  
 ```bash
-python ml_utils.py --dataset cifar10 --epochs 10 --batch_size 64 --lr 0.001 --save_path cifar10_model.pth
+pip install -r requirements.txt
 ```
 
-### Web Development Setup
+---
 
-A utility to quickly scaffold a basic web development project. This module creates a flexible folder structure (e.g., `src`, `public`, `config`, `tests`), generates starter files such as `README.md`, `LICENSE`, `index.html`, `style.css`, and `script.js`, and optionally sets up a basic server file (using Flask or Node.js) along with a `package.json` for Node projects.
-
-Usage:
+## 🛠 Usage
+### 🏗 Automate Web Project Setup
 ```bash
-python webdev_setup.py --project-name MyWebApp --include-server flask --license MIT
+python webdev_setup.py --project-name MyApp --include-server flask --license MIT
 ```
+Creates a fully structured web development project with an optional backend.
 
-Additional options include:
-- `--force`: Overwrite existing directories.
-- `--readme-template`: Use a custom README template.
-- `--index-template`: Use a custom index.html template.
-- `--include-package`: (For Node projects) Create a basic package.json file.
-
-## Installation
-
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/zanemilo/utils.git
-   cd utils-toolbox
-   ```
-
-2. **Create a Virtual Environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Usage Examples
-
-Refer to the individual module sections above for CLI usage and code snippets.
-
-## Testing
-
-To run the tests (if available), use:
+### 📊 Summarize Data Files
 ```bash
-pytest
+python data_summary.py sample.csv --output summary.csv --save-plots
 ```
-Ensure your virtual environment is activated before running tests.
+Parses CSV data, computes stats, and generates insightful visualizations.
 
-## Dependencies
+### 📡 Automate Price Scraping
+```bash
+python price_scraper.py --product "Laptop" --url "https://example.com/product"
+```
+Logs and tracks product price changes over time.
 
-- [Helium](https://github.com/mherrmann/helium) (>= 3.0.0)
-- [PyTorch](https://pytorch.org) (>= 1.8.0)
-- [torchvision](https://pytorch.org/vision/stable/index.html) (>= 0.9.0)
-- [matplotlib](https://matplotlib.org) (>= 3.0.0)
-- [pandas](https://pandas.pydata.org) (>= 1.0.0)
-- [pytest](https://docs.pytest.org) (>= 7.0.0) (optional for testing)
+### 🔥 Run a Machine Learning Experiment
+```bash
+python ml_utils.py --dataset mnist --epochs 10 --batch_size 32 --lr 0.001 --save_path mnist_model.pth
+```
+Trains a model on MNIST with adjustable parameters.
 
-## License
+---
 
-This project is licensed under the MIT License.
+## 📜 License
+This project is licensed under the **MIT License** – free to use, modify, and contribute.
+
+---
+
+## 🌟 Contributions
+Feel free to fork, submit PRs, or open issues! 🚀  
+
+---
+
+## 🔗 Connect with Me
+[GitHub](https://github.com/zanemilo) • [LinkedIn](https://www.linkedin.com/in/zanedeso)
+
+---
+
+### ✅ Next Steps
+- ✅ Add `requirements.txt` (I can generate it if needed!)
+- ✅ Refine documentation for each script (if necessary)
+- ✅ Consider making the repo public once you're happy with it
