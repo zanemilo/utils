@@ -1,6 +1,6 @@
 # Utils Toolbox
 
-This repository is a collection of utility components to help streamline development tasks, automate processes, and support machine learning experiments. The repository includes modules for logging, error handling, repository initialization, price scraping, ML experiment setup, and more.
+This repository is a collection of utility components to help streamline development tasks, automate processes, and support machine learning experiments. The repository includes modules for logging, error handling, repository initialization, price scraping, ML experiment setup, web development scaffolding, and more.
 
 ## Table of Contents
 
@@ -13,6 +13,7 @@ This repository is a collection of utility components to help streamline develop
     - [Repository Initialization](#repository-initialization)
     - [Price Scraper](#price-scraper)
     - [ML Utilities](#ml-utilities)
+    - [Web Development Setup](#web-development-setup)
   - [Installation](#installation)
   - [Usage Examples](#usage-examples)
   - [Testing](#testing)
@@ -21,7 +22,7 @@ This repository is a collection of utility components to help streamline develop
 
 ## Overview
 
-This repository is designed as a toolbox for developers, providing modular and reusable components that can be easily integrated into various projects. Whether you need to set up logging, manage errors, initialize Git repositories, scrape product prices, or run machine learning experiments, this repo has utilities to help you get started quickly.
+This repository is designed as a toolbox for developers, providing modular and reusable components that can be easily integrated into various projects. Whether you need to set up logging, manage errors, initialize Git repositories, scrape product prices, run machine learning experiments, or quickly scaffold a web development project, this repo has utilities to help you get started quickly.
 
 ## Modules
 
@@ -83,6 +84,21 @@ Also accessible via CLI:
 python ml_utils.py --dataset cifar10 --epochs 10 --batch_size 64 --lr 0.001 --save_path cifar10_model.pth
 ```
 
+### Web Development Setup
+
+A utility to quickly scaffold a basic web development project. This module creates a flexible folder structure (e.g., `src`, `public`, `config`, `tests`), generates starter files such as `README.md`, `LICENSE`, `index.html`, `style.css`, and `script.js`, and optionally sets up a basic server file (using Flask or Node.js) along with a `package.json` for Node projects.
+
+Usage:
+```bash
+python webdev_setup.py --project-name MyWebApp --include-server flask --license MIT
+```
+
+Additional options include:
+- `--force`: Overwrite existing directories.
+- `--readme-template`: Use a custom README template.
+- `--index-template`: Use a custom index.html template.
+- `--include-package`: (For Node projects) Create a basic package.json file.
+
 ## Installation
 
 1. **Clone the Repository:**
@@ -104,7 +120,7 @@ python ml_utils.py --dataset cifar10 --epochs 10 --batch_size 64 --lr 0.001 --sa
 
 ## Usage Examples
 
-Refer to the individual module sections above for CLI usage and example code snippets.
+Refer to the individual module sections above for CLI usage and code snippets.
 
 ## Testing
 
@@ -112,7 +128,7 @@ To run the tests (if available), use:
 ```bash
 pytest
 ```
-Ensure that your virtual environment is activated before running tests.
+Ensure your virtual environment is activated before running tests.
 
 ## Dependencies
 
@@ -120,6 +136,7 @@ Ensure that your virtual environment is activated before running tests.
 - [PyTorch](https://pytorch.org) (>= 1.8.0)
 - [torchvision](https://pytorch.org/vision/stable/index.html) (>= 0.9.0)
 - [matplotlib](https://matplotlib.org) (>= 3.0.0)
+- [pandas](https://pandas.pydata.org) (>= 1.0.0)
 - [pytest](https://docs.pytest.org) (>= 7.0.0) (optional for testing)
 
 ## License
