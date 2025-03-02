@@ -13,7 +13,6 @@ This repository is a collection of utility components to help streamline develop
     - [Repository Initialization](#repository-initialization)
     - [Price Scraper](#price-scraper)
     - [ML Utilities](#ml-utilities)
-    - [Find Virtual Environments](#find-virtual-environments)
   - [Installation](#installation)
   - [Usage Examples](#usage-examples)
   - [Testing](#testing)
@@ -84,14 +83,6 @@ Also accessible via CLI:
 python ml_utils.py --dataset cifar10 --epochs 10 --batch_size 64 --lr 0.001 --save_path cifar10_model.pth
 ```
 
-### Find Virtual Environments
-
-A utility script to search for Python virtual environments (by locating `pyvenv.cfg`) starting from a specified root directory.  
-Usage:
-```bash
-python find_venvs.py --root ~/projects
-```
-
 ## Installation
 
 1. **Clone the Repository:**
@@ -103,7 +94,7 @@ python find_venvs.py --root ~/projects
 2. **Create a Virtual Environment:**
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scriptsctivate
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install Dependencies:**
