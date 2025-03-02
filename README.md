@@ -87,7 +87,7 @@ python ml_utils.py --dataset cifar10 --epochs 10 --batch_size 64 --lr 0.001 --sa
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/yourusername/utils-toolbox.git
+   git clone https://github.com/zanemilo/utils.git
    cd utils-toolbox
    ```
 
