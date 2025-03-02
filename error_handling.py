@@ -1,7 +1,7 @@
 """
 error_handling.py
 
-Author: Zane Milo
+Author: Zane Milo Deso
 Filename: error_handling.py
 Created: 2025-03-02
 Purpose: Provides utilities for standardized error handling in the utils toolbox.

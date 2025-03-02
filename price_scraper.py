@@ -2,7 +2,7 @@
 """
 price_scraper.py
 
-Author: Zane Milo
+Author: Zane Milo Deso
 Created: 2025-03-02
 Purpose: Dynamically scrape product prices from web pages using Helium.
          The script navigates to a product page, extracts the price using a provided

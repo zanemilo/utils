@@ -2,7 +2,7 @@
 """
 ml_utils.py
 
-Author: Zane Milo
+Author: Zane Milo Deso
 Created: 2025-03-02
 Purpose: Provides a robust utility module for machine learning experiments.
          This module includes functions to load datasets, build models, train models,

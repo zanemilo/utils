@@ -2,7 +2,7 @@
 """
 init_repo.py
 
-Author: Zane Milo
+Author: Zane Milo Deso
 Created: 2025-03-02
 Purpose: Initializes a new Git repository with essential files and an initial commit.
          This script automates repository initialization by creating a directory, initializing

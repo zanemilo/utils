@@ -1,7 +1,7 @@
 """
 logger.py
 
-Author: Zane Milo
+Author: Zane Milo Deso
 Filename: logger.py
 Created: 2025-03-02
 Purpose: Provides a configurable logging setup with both a rotating file handler and a console handler.
