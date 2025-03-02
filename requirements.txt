@@ -1,6 +1,7 @@
-# External dependencies for the utils repository
-
 helium>=3.0.0
+torch>=1.8.0
+torchvision>=0.9.0
+matplotlib>=3.0.0
 
 # Optional: For running tests
 pytest>=7.0.0
