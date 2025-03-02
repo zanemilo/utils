@@ -115,3 +115,14 @@ venv.bak/
 
 # Mypy cache
 .mypy_cache/
+
+
+# Ignore virtual environments
+venv/
+env/
+.venv/
+env.bak/
+venv.bak/
+pyvenv.cfg
+utils_repo/Scripts/
+

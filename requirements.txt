@@ -1,0 +1,6 @@
+# External dependencies for the utils repository
+
+helium>=3.0.0
+
+# Optional: For running tests
+pytest>=7.0.0
