@@ -10,7 +10,8 @@ This repository contains modular and production-ready utilities for:
 ✅ **Data Analysis** – Summarization tools for CSV files, statistics computation, and visualizations.  
 ✅ **Web Development Scaffolding** – Automate project setup with HTML/CSS/JS frameworks and backend support.  
 ✅ **Machine Learning Experimentation** – Dataset loaders, model training, and evaluation scripts.  
-✅ **Web Scraping & Automation** – Dynamic price scraping and automated web interactions.  
+✅ **Web Scraping & Automation** – Dynamic price scraping and automated web interactions. 
+✅ **PDF Utilities** –  Merge, Split, Watermark, encrypt, and extract text from PDFs.
 
 Whether you're building software, analyzing data, or automating workflows, these utilities make your development process **faster, cleaner, and more efficient**.
 
