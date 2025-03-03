@@ -44,6 +44,14 @@ Whether you're building software, analyzing data, or automating workflows, these
 - **Price Scraping** – Fetches and logs product prices dynamically.
 - **Automated Browsing** – Uses Helium to interact with web pages programmatically.
 
+### 📄 PDF Utilities
+
+- **Merge PDFs** – Combine multiple PDFs into one.
+- **Split PDFs** – Create individual pages from a larger PDF.
+- **Watermarking** – Insert text-based watermarks on each page.
+- **Text Extraction** – Extract text (by page) from PDFs.
+- **Encryption** – Encrypt PDFs with password protection.
+
 ---
 
 ## ⚡ Installation
@@ -88,6 +96,16 @@ Logs and tracks product price changes over time.
 python ml_utils.py --dataset mnist --epochs 10 --batch_size 32 --lr 0.001 --save_path mnist_model.pth
 ```
 Trains a model on MNIST with adjustable parameters.
+
+### 📄 Handle PDFs
+```bash
+python pdf_utils.py merge output.pdf file1.pdf file2.pdf
+python pdf_utils.py split input.pdf output_folder
+python pdf_utils.py watermark input.pdf output.pdf "Watermark Text"
+python pdf_utils.py extract input.pdf
+python pdf_utils.py encrypt input.pdf output.pdf password
+```
+Perform PDF merges, splits, watermarking, text extraction, and encryption through a convenient CLI.
 
 ---
 
