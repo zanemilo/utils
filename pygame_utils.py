@@ -8,6 +8,8 @@ Purpose: A convenience toolkit for Pygame projects, offering reusable
          This includes image loading with caching and configurable colorkey,
          animations (with an optional on_complete callback), particle effects,
          and tilemap handling for collisions and rendering.
+         Additionally, an Editor class has been integrated to allow in-engine
+         level editing.
 
 Enhancements:
 - Integrated error handling using the @handle_errors decorator.
@@ -18,42 +20,26 @@ Enhancements:
 - Asynchronous asset loading via async_load_image.
 - Optional error propagation in load_image via propagate_error flag.
 - Detailed docstrings and usage examples.
+- Integrated Editor for live editing.
 
 Usage Example:
     import pygame
     import pygame_utils as pgutils
-    import logger
 
-    # Setup logging early in your application.
-    logger.setup_logging()
-
-    # Load a single image (with caching).
+    # For non-editor projects, you can simply use:
     sprite_img = pgutils.load_image("player.png", colorkey=(0, 0, 0))
+    # etc.
 
-    # Asynchronously load an image.
-    # (This must be run inside an asyncio event loop.)
-    # sprite_img = await pgutils.async_load_image("player.png", colorkey=(0, 0, 0))
-
-    # Load multiple images from a directory.
-    sprite_list = pgutils.load_images("player/walk", colorkey=(0, 0, 0))
-
-    # Create an animation with an on_complete callback.
-    def anim_finished():
-        print("Animation completed!")
-    walk_anim = pgutils.Animation(sprite_list, img_dur=5, loop=False, on_complete=anim_finished)
-
-    # Use the Tilemap.
-    tilemap = pgutils.Tilemap(game_reference, tile_size=16)
-    tilemap.load("map.json")
-    tilemap.render(surface, offset=(0, 0))
-
-    # Create a particle (with improved default for velocity).
-    particle = pgutils.Particle(game_reference, "spark", (100, 100), velocity=None)
+    # To launch the integrated level editor:
+    if __name__ == "__main__":
+        editor = pgutils.Editor()
+        editor.run()
 
 License: MIT
 """
 
 import os
+import sys
 import json
 import pygame
 import logging
@@ -62,17 +48,16 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from error_handling import handle_errors, UtilsError
 
-# Configurable asset path: allows override via an environment variable.
+# ---------------------------------------------------------------------
+# CONFIGURATION & GLOBALS
+# ---------------------------------------------------------------------
 BASE_IMG_PATH = os.getenv("BASE_IMG_PATH", "data/images/")
-# Global image cache to avoid reloading images.
 _image_cache = {}
-
-##############################
-#   ASYNCHRONOUS ASSET LOADING
-##############################
-
 _executor = ThreadPoolExecutor(max_workers=4)
 
+# ---------------------------------------------------------------------
+# ASYNCHRONOUS ASSET LOADING
+# ---------------------------------------------------------------------
 @handle_errors(default_return=None)
 def load_image(path: str, colorkey: tuple = (0, 0, 0), propagate_error: bool = False) -> pygame.Surface:
     """
@@ -148,10 +133,9 @@ def load_images(path: str, colorkey: tuple = (0, 0, 0)) -> list:
         logging.exception("Error loading images from directory: %s", full_path)
     return images
 
-#####################
-#    ANIMATION      #
-#####################
-
+# ---------------------------------------------------------------------
+# ANIMATION
+# ---------------------------------------------------------------------
 class Animation:
     """
     Manages a series of images (frames) for animations.
@@ -202,10 +186,9 @@ class Animation:
         index = int(self.frame // self.img_duration)
         return self.images[index]
 
-#####################
-#   PARTICLE BASE   #
-#####################
-
+# ---------------------------------------------------------------------
+# PARTICLE
+# ---------------------------------------------------------------------
 class Particle:
     """
     Provides a basic particle for visual effects.
@@ -259,12 +242,11 @@ class Particle:
         draw_y = self.pos[1] - offset[1] - img.get_height() // 2
         surf.blit(img, (draw_x, draw_y))
 
-#####################
-#   TILE CONSTANTS  #
-#####################
-
-PHYSICS_TILES = {"grass", "stone"}  # Tiles that are solid for collision purposes.
-AUTOTILE_TYPES = {"grass", "stone"}  # Tiles eligible for auto-tiling.
+# ---------------------------------------------------------------------
+# TILEMAP & RELATED CONSTANTS
+# ---------------------------------------------------------------------
+PHYSICS_TILES = {"grass", "stone"}      # Tiles that are solid for collision purposes.
+AUTOTILE_TYPES = {"grass", "stone"}       # Tiles eligible for auto-tiling.
 
 # Offsets for a 3x3 grid (neighbors) around a tile.
 NEIGHBOR_OFFSETS = [
@@ -285,10 +267,6 @@ AUTOTILE_MAP = {
     tuple(sorted([(1, 0), (0, -1), (0, 1)])): 7,
     tuple(sorted([(1, 0), (-1, 0), (0, 1), (0, -1)])): 8,
 }
-
-#####################
-#    TILEMAP CLASS  #
-#####################
 
 class Tilemap:
     """
@@ -489,3 +467,180 @@ class Tilemap:
                         surf.blit(tile_img, (draw_x, draw_y))
                     except Exception as e:
                         logging.exception("Error rendering tile at %s", loc_str)
+
+# ---------------------------------------------------------------------
+# EDITOR CLASS INTEGRATION
+# ---------------------------------------------------------------------
+RENDER_SCALE = 2.0  # Determines the multiplicative size of each pixel
+
+class Editor:
+    """
+    A simple level editor using the utilities provided in this module.
+    This class creates a window where you can place tiles on a grid (or off-grid),
+    scroll around, and save/load your map.
+    """
+    def __init__(self):
+        pygame.init()
+        pygame.display.set_caption("Editor")
+        self.screen = pygame.display.set_mode((640, 480))
+        self.display = pygame.Surface((320, 240))
+        self.clock = pygame.time.Clock()
+
+        # Load assets from various tile directories.
+        self.assets = {
+            'decor': load_images('tiles/decor'),
+            'grass': load_images('tiles/grass'),
+            'large_decor': load_images('tiles/large_decor'),
+            'stone': load_images('tiles/stone'),
+            'spawners': load_images('tiles/spawners'),
+        }
+
+        self.movement = [False, False, False, False]  # [Left, Right, UP, Down]
+        self.tilemap = Tilemap(self, tile_size=16)
+        try:
+            self.tilemap.load('map.json')
+        except FileNotFoundError:
+            pass
+
+        self.scroll = [0, 0]
+        self.scroll_speed = 3
+
+        self.tile_list = list(self.assets)
+        self.tile_group = 0
+        self.tile_variant = 0
+
+        self.clicking = False
+        self.right_clicking = False
+        self.shift = False
+        self.ongrid = True
+
+    def run(self):
+        while True:
+            self.display.fill((0, 0, 0))
+            # Update camera scroll based on key inputs.
+            self.scroll[0] += (self.movement[1] - self.movement[0]) * self.scroll_speed
+            self.scroll[1] += (self.movement[3] - self.movement[2]) * self.scroll_speed
+            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+
+            # Render tilemap.
+            self.tilemap.render(self.display, offset=render_scroll)
+
+            # Prepare a preview of the current tile.
+            current_tile_img = self.assets[self.tile_list[self.tile_group]][self.tile_variant].copy()
+            current_tile_img.set_alpha(100)  # Make the preview semi-transparent.
+
+            mpos = pygame.mouse.get_pos()
+            mpos = (mpos[0] / RENDER_SCALE, mpos[1] / RENDER_SCALE)
+            tile_pos = (int((mpos[0] + self.scroll[0]) // self.tilemap.tile_size),
+                        int((mpos[1] + self.scroll[1]) // self.tilemap.tile_size))
+
+            if self.ongrid:
+                # Snap tile preview to grid.
+                self.display.blit(current_tile_img,
+                                  (tile_pos[0] * self.tilemap.tile_size - self.scroll[0],
+                                   tile_pos[1] * self.tilemap.tile_size - self.scroll[1]))
+            else:
+                self.display.blit(current_tile_img, mpos)
+
+            if self.clicking and self.ongrid:
+                tile_key = f"{tile_pos[0]};{tile_pos[1]}"
+                self.tilemap.tilemap[tile_key] = {
+                    'type': self.tile_list[self.tile_group],
+                    'variant': self.tile_variant,
+                    'pos': tile_pos
+                }
+            if self.right_clicking:
+                tile_key = f"{tile_pos[0]};{tile_pos[1]}"
+                if tile_key in self.tilemap.tilemap:
+                    del self.tilemap.tilemap[tile_key]
+                # Remove offgrid tiles that collide with the mouse.
+                for tile in self.tilemap.offgrid_tiles.copy():
+                    tile_img = self.assets[tile['type']][tile['variant']]
+                    tile_rect = pygame.Rect(tile['pos'][0] - self.scroll[0],
+                                            tile['pos'][1] - self.scroll[1],
+                                            tile_img.get_width(),
+                                            tile_img.get_height())
+                    if tile_rect.collidepoint(mpos):
+                        self.tilemap.offgrid_tiles.remove(tile)
+
+            # Draw a small preview on screen.
+            self.display.blit(current_tile_img, (5, 5))
+            
+            # Event handling.
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self.clicking = True
+                        if not self.ongrid:
+                            self.tilemap.offgrid_tiles.append({
+                                'type': self.tile_list[self.tile_group],
+                                'variant': self.tile_variant,
+                                'pos': (mpos[0] + self.scroll[0], mpos[1] + self.scroll[1])
+                            })
+                    if event.button == 3:
+                        self.right_clicking = True
+                    if self.shift:
+                        if event.button == 4:
+                            self.tile_variant = (self.tile_variant - 1) % len(self.assets[self.tile_list[self.tile_group]])
+                        if event.button == 5:
+                            self.tile_variant = (self.tile_variant + 1) % len(self.assets[self.tile_list[self.tile_group]])
+                    else:
+                        if event.button == 4:
+                            self.tile_group = (self.tile_group - 1) % len(self.tile_list)
+                            self.tile_variant = 0
+                        if event.button == 5:
+                            self.tile_group = (self.tile_group + 1) % len(self.tile_list)
+                            self.tile_variant = 0
+                if event.type == pygame.MOUSEBUTTONUP:
+                    if event.button == 1:
+                        self.clicking = False
+                    if event.button == 3:
+                        self.right_clicking = False
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_a:
+                        self.movement[0] = True
+                    if event.key == pygame.K_d:
+                        self.movement[1] = True
+                    if event.key == pygame.K_w:
+                        self.movement[2] = True
+                    if event.key == pygame.K_s:
+                        self.movement[3] = True
+                    if event.key == pygame.K_g:
+                        self.ongrid = not self.ongrid
+                    if event.key == pygame.K_t:
+                        self.tilemap.autotile()
+                    if event.key == pygame.K_o:
+                        self.tilemap.save('map.json')
+                    if event.key == pygame.K_LSHIFT:
+                        self.shift = True
+                        self.scroll_speed += 2
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_a:
+                        self.movement[0] = False
+                    if event.key == pygame.K_d:
+                        self.movement[1] = False
+                    if event.key == pygame.K_w:
+                        self.movement[2] = False
+                    if event.key == pygame.K_s:
+                        self.movement[3] = False
+                    if event.key == pygame.K_LSHIFT:
+                        self.shift = False
+                        self.scroll_speed = 3
+
+            # Scale and render display onto the main screen.
+            scaled_display = pygame.transform.scale(self.display, self.screen.get_size())
+            self.screen.blit(scaled_display, (0, 0))
+            pygame.display.update()
+            self.clock.tick(60)
+
+# ---------------------------------------------------------------------
+# MAIN ENTRY POINT
+# ---------------------------------------------------------------------
+if __name__ == "__main__":
+    editor = Editor()
+    editor.run()
