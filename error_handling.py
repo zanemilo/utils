@@ -227,4 +227,4 @@ if __name__ == "__main__":
     setup_global_exception_hook()
 
     # Uncomment the following line to trigger an unhandled exception and see the global hook in action.
-    #raise ValueError("This is an unhandled exception for testing.")
+    # raise ValueError("This is an unhandled exception for testing.")
