@@ -1,233 +1,289 @@
 """
 error_handling.py
+=================
 
 Author: Zane Milo Deso
 Filename: error_handling.py
 Created: 2025-03-02
-Purpose: Provides utilities for standardized error handling in the utils toolbox.
-         This module includes:
-         - A custom base exception for utils-related errors.
-         - A decorator to gracefully handle exceptions in functions.
-         - A context manager to handle exceptions in code blocks.
-         - A retry decorator to automatically retry functions on failure.
-         - A global exception hook to log unhandled exceptions.
 
-Features:
-- Custom exception base class for unified error management.
-- @handle_errors decorator to catch, log, and optionally return a default value when exceptions occur.
-- ErrorHandler context manager to wrap code blocks, log exceptions, and optionally suppress them.
-- @retry decorator to retry a function call upon encountering specified exceptions.
-- Global exception hook to capture and log unhandled exceptions.
-- Detailed logging for improved traceability and debugging.
+Purpose
+-------
+Utilities for standardized error handling across your codebase:
+- A custom base exception (UtilsError)
+- A decorator to gracefully handle exceptions in functions (@handle_errors)
+- A context manager to handle exceptions in code blocks (ErrorHandler)
+- A retry decorator with backoff and optional jitter (@retry)
+- A global exception hook to log unhandled exceptions (setup_global_exception_hook)
 
-Usage:
-    from error_handling import handle_errors, ErrorHandler, retry, setup_global_exception_hook, UtilsError
+Design Notes
+------------
+- Integrates with your project logger via `logger.setup_logging()` from logger.py
+- Uses Python's stdlib `logging` everywhere; no shadowing of names
+- Fully type-annotated; safe defaults
+- Small, composable utilities you can unit test easily
+
+Usage
+-----
+    from error_handling import (
+        UtilsError, handle_errors, ErrorHandler, retry, setup_global_exception_hook
+    )
 
     @handle_errors(default_return="Error occurred")
     def risky_operation():
-         # Code that might throw an error.
-         return result
+        return 1 / 0
 
-    @retry(attempts=3, delay=1, backoff=2)
+    @retry(attempts=3, delay=1, backoff=2, exceptions=(TimeoutError,))
     def network_call():
-         # Code that might fail due to network issues.
-         return data
+        return get_data()
 
     with ErrorHandler(suppress=True):
-         # Code that might throw an error
-         do_something()
+        do_something_risky()
 
-    # Set up the global exception hook early in your application.
-    setup_global_exception_hook()
-
-License: MIT License (or specify another if applicable)
+    setup_global_exception_hook()  # Call once at app startup
 """
 
-#import logging
+from __future__ import annotations
+
+import functools
+import logging
 import sys
 import time
-import functools
+from typing import Callable, Iterable, Optional, Tuple, Type
 
-import logger
-logger.setup_logging()
+# Initialize project logging once; safe no-op if already configured.
+import logger as app_logger  # your logger.py
+app_logger.setup_logging()
 
+LOG = logging.getLogger(__name__)
+
+__all__ = [
+    "UtilsError",
+    "handle_errors",
+    "ErrorHandler",
+    "retry",
+    "setup_global_exception_hook",
+]
+
+
+# -----------------------------------------------------------------------------
+# Exceptions
+# -----------------------------------------------------------------------------
 class UtilsError(Exception):
-    """
-    Base exception class for all errors in the utils module.
-    Use this as a parent class for custom exceptions in your utilities.
-    """
+    """Base exception class for utilities-related errors."""
     pass
 
-def handle_errors(default_return=None, log_exception=True):
+
+# -----------------------------------------------------------------------------
+# Decorators
+# -----------------------------------------------------------------------------
+def handle_errors(
+    default_return: object | None = None,
+    log_exception: bool = True,
+    use_logger: Optional[logging.Logger] = None,
+) -> Callable[[Callable[..., object]], Callable[..., object]]:
     """
-    Decorator for handling errors in functions.
+    Decorator: catch any exception, optionally log it, and return a default value.
 
-    Wraps a function to catch any exceptions, log the error details, and return a default value
-    if an exception occurs.
+    Parameters
+    ----------
+    default_return : Any | None
+        Value to return when an exception is caught (default: None).
+    log_exception : bool
+        If True, logs with traceback using the provided logger (default: True).
+    use_logger : logging.Logger | None
+        Logger to use; defaults to module logger if None.
 
-    Parameters:
-        default_return: The value to return if an exception is caught. Default is None.
-        log_exception (bool): Whether to log the exception with traceback. Default is True.
-
-    Returns:
-        A wrapped function that handles exceptions and returns the default value on error.
+    Returns
+    -------
+    Callable
+        Wrapped function that handles exceptions.
     """
-    def decorator(func):
+    log = use_logger or LOG
+
+    def decorator(func: Callable[..., object]) -> Callable[..., object]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> object:
             try:
-                # Attempt to execute the function.
                 return func(*args, **kwargs)
-            except Exception as e:
-                # Log the exception with traceback if logging is enabled.
+            except Exception as exc:
                 if log_exception:
-                    logger.exception("Exception in function '%s': %s", func.__name__, e)
-                # Return the specified default value when an error occurs.
+                    log.exception("Exception in %s: %s", func.__name__, exc)
                 return default_return
         return wrapper
+
     return decorator
 
-class ErrorHandler:
+
+def retry(
+    attempts: int = 3,
+    delay: float = 1.0,
+    backoff: float = 2.0,
+    exceptions: Tuple[Type[BaseException], ...] = (Exception,),
+    jitter: Optional[Tuple[float, float]] = None,
+    use_logger: Optional[logging.Logger] = None,
+    on_giveup: Optional[Callable[[BaseException], None]] = None,
+) -> Callable[[Callable[..., object]], Callable[..., object]]:
     """
-    Context manager for handling errors in a block of code.
+    Decorator: retry a function call on specified exceptions with backoff (and optional jitter).
 
-    This context manager logs any exception that occurs within the block. It can optionally
-    suppress the exception (i.e., prevent it from propagating) or allow it to be re-raised.
+    Parameters
+    ----------
+    attempts : int
+        Max attempts before giving up (>=1).
+    delay : float
+        Initial delay between attempts in seconds.
+    backoff : float
+        Multiplier applied to delay after each failure (e.g., 2.0 doubles the delay).
+    exceptions : tuple[type[BaseException], ...]
+        Exception types that trigger a retry.
+    jitter : tuple[float, float] | None
+        Optional (min, max) seconds of random jitter added to the delay each attempt.
+    use_logger : logging.Logger | None
+        Logger for retry messages; defaults to module logger.
+    on_giveup : Callable[[BaseException], None] | None
+        Optional callback invoked with the last exception when all retries are exhausted.
 
-    Usage:
-        with ErrorHandler(suppress=True):
-            # code that might throw an error
-            risky_operation()
+    Returns
+    -------
+    Callable
+        Wrapped function that retries on failure.
     """
-    def __init__(self, suppress=True):
-        """
-        Initialize the ErrorHandler.
+    log = use_logger or LOG
+    if attempts < 1:
+        raise ValueError("attempts must be >= 1")
+    if delay < 0:
+        raise ValueError("delay must be >= 0")
+    if backoff <= 0:
+        raise ValueError("backoff must be > 0")
+    if jitter is not None and (len(jitter) != 2 or jitter[0] > jitter[1]):
+        raise ValueError("jitter must be a (min, max) tuple with min <= max")
 
-        Parameters:
-            suppress (bool): If True, exceptions are suppressed after logging; if False, they are re-raised.
-        """
-        self.suppress = suppress
+    import random
 
-    def __enter__(self):
-        # Nothing special needed when entering the context.
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # If an exception occurred, log it.
-        if exc_type is not None:
-            logger.exception("Exception caught in context manager: %s", exc_val)
-            # Return True if suppressing the exception, False otherwise.
-            return self.suppress
-        # No exception occurred.
-        return False
-
-def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0, exceptions: tuple = (Exception,), logger: logger.Logger = None):
-    """
-    Decorator for retrying a function if an exception occurs.
-
-    This decorator will attempt to call the decorated function up to a specified number of times
-    if one of the specified exceptions is raised. After each failure, it waits for a given delay,
-    which increases by the backoff factor with each subsequent attempt.
-
-    Parameters:
-        attempts (int): Maximum number of attempts before giving up.
-        delay (float): Initial delay between attempts in seconds.
-        backoff (float): Factor by which the delay increases after each failed attempt.
-        exceptions (tuple): Tuple of exception classes that should trigger a retry.
-        logger (logging.Logger): Logger instance for logging retry attempts. If None, uses the module logger.
-
-    Returns:
-        The result of the function if successful; otherwise, re-raises the exception after all attempts fail.
-    """
-    def decorator(func):
+    def decorator(func: Callable[..., object]) -> Callable[..., object]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            _logger = logger or logger.getLogger(func.__module__)
+        def wrapper(*args, **kwargs) -> object:
+            current_delay = delay
             attempt = 1
-            current_delay = delay  # Use a local variable to track delay without modifying the parameter.
-            while attempt <= attempts:
+            while True:
                 try:
                     return func(*args, **kwargs)
-                except exceptions as e:
-                    if attempt == attempts:
-                        _logger.exception("Function %s failed after %d attempts.", func.__name__, attempts)
-                        raise
-                    else:
-                        _logger.warning(
-                            "Function %s failed on attempt %d/%d: %s. Retrying in %.1f seconds...",
-                            func.__name__, attempt, attempts, str(e), current_delay
+                except exceptions as exc:  # type: ignore[misc]
+                    if attempt >= attempts:
+                        log.exception(
+                            "Function %s failed after %d attempt(s).",
+                            func.__name__, attempt
                         )
-                        time.sleep(current_delay)
-                        current_delay *= backoff
-                        attempt += 1
+                        if on_giveup:
+                            on_giveup(exc)
+                        raise
+                    # compute sleep with optional jitter
+                    sleep_for = current_delay
+                    if jitter is not None:
+                        sleep_for += random.uniform(jitter[0], jitter[1])
+                    log.warning(
+                        "Function %s failed on attempt %d/%d: %s. Retrying in %.2fs...",
+                        func.__name__, attempt, attempts, exc, sleep_for
+                    )
+                    time.sleep(max(0.0, sleep_for))
+                    current_delay *= backoff
+                    attempt += 1
         return wrapper
+
     return decorator
 
-def setup_global_exception_hook(logger: logger.Logger = None):
+
+# -----------------------------------------------------------------------------
+# Context Manager
+# -----------------------------------------------------------------------------
+class ErrorHandler:
     """
-    Sets up a global exception hook to log unhandled exceptions.
+    Context manager to log exceptions within a block and optionally suppress them.
 
-    This function overrides the default sys.excepthook to log any unhandled exceptions using the specified logger.
-    It is useful for capturing errors that are not caught by try/except blocks.
-
-    Parameters:
-        logger (logging.Logger, optional): Logger to use for logging exceptions.
-            If not provided, uses logging.getLogger(__name__).
+    Parameters
+    ----------
+    suppress : bool
+        If True, exceptions are suppressed after logging. If False, they propagate.
+    use_logger : logging.Logger | None
+        Logger to use for exception messages.
     """
-    _logger = logger or logger.getLogger(__name__)
 
-    def exception_hook(exc_type, exc_value, exc_traceback):
-        # For KeyboardInterrupt, call the default exception hook to allow termination.
+    def __init__(self, suppress: bool = True, use_logger: Optional[logging.Logger] = None) -> None:
+        self.suppress = suppress
+        self.log = use_logger or LOG
+
+    def __enter__(self) -> "ErrorHandler":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        if exc_type is not None:
+            # Use .error with exc_info to avoid double formatting
+            self.log.error("Exception in context manager", exc_info=(exc_type, exc_val, exc_tb))
+            return self.suppress
+        return False
+
+
+# -----------------------------------------------------------------------------
+# Global exception hook
+# -----------------------------------------------------------------------------
+def setup_global_exception_hook(use_logger: Optional[logging.Logger] = None) -> None:
+    """
+    Install a global exception hook that logs uncaught exceptions.
+
+    Parameters
+    ----------
+    use_logger : logging.Logger | None
+        Logger to use for logging uncaught exceptions. Defaults to module logger.
+
+    Notes
+    -----
+    - KeyboardInterrupt is delegated to the default excepthook to allow clean termination.
+    """
+    log = use_logger or LOG
+
+    def _exception_hook(exc_type, exc_value, exc_traceback):
         if issubclass(exc_type, KeyboardInterrupt):
+            # Preserve default behavior for Ctrl+C
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
-        _logger.error("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
-    
-    sys.excepthook = exception_hook
+        log.error("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
 
-# Standalone testing block: runs when this script is executed directly.
+    sys.excepthook = _exception_hook
+
+
+# -----------------------------------------------------------------------------
+# Standalone demonstration
+# -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Configure basic logging for demonstration.
-    logger.basicConfig(level=logger.DEBUG)
+    # Example: pretty basic logging level change for demo
+    app_logger.setup_logging(log_level="DEBUG", force=True)
 
-    # Test the handle_errors decorator.
     @handle_errors(default_return="Default Value")
-    def divide(a, b):
-        """
-        Divide two numbers and return the result.
-        Returns a default value if a division error occurs.
-        """
+    def divide(a: float, b: float) -> float | str:
+        """Divide two numbers; returns default on error."""
         return a / b
 
-    print("Divide result:", divide(10, 0))  # Expected output: "Default Value"
+    print("Divide result (should be 'Default Value'):", divide(10, 0))
 
-    # Test the retry decorator.
-    counter = 0
-    
-    @retry(attempts=3, delay=1, backoff=2, exceptions=(ZeroDivisionError,))
-    def unreliable_divide(a, b):
-        """
-        Divides two numbers but raises ZeroDivisionError on purpose for testing.
-        Succeeds only after a few failed attempts.
-        """
-        global counter
-        counter += 1
-        if counter < 3:
+    # Retry demo
+    attempt_counter = {"n": 0}
+
+    @retry(attempts=3, delay=0.5, backoff=2.0, exceptions=(ZeroDivisionError,))
+    def unreliable_divide(a: float, b: float) -> float:
+        attempt_counter["n"] += 1
+        if attempt_counter["n"] < 3:
             raise ZeroDivisionError("Intentional failure for testing retry mechanism.")
         return a / b
 
     try:
-        print("Unreliable divide result:", unreliable_divide(10, 2))  # Expected to succeed on the 3rd attempt.
+        print("Unreliable divide result (succeeds on 3rd):", unreliable_divide(10, 2))
     except ZeroDivisionError:
         print("unreliable_divide failed after retries.")
 
-    # Test the ErrorHandler context manager.
+    # Context manager demo
     with ErrorHandler(suppress=True):
-        # This block will catch and log the exception without stopping execution.
-        _ = 1 / 0
+        _ = 1 / 0  # Will be logged and suppressed
 
-    # Set up the global exception hook.
-    setup_global_exception_hook()
-
-    # Uncomment the following line to trigger an unhandled exception and see the global hook in action.
+    # Global hook demo (uncomment to see it in action)
+    # setup_global_exception_hook()
     raise ValueError("This is an unhandled exception for testing.")
