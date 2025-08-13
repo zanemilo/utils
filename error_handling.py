@@ -43,10 +43,13 @@ Usage:
 License: MIT License (or specify another if applicable)
 """
 
-import logging
+#import logging
 import sys
 import time
 import functools
+
+import logger
+logger.setup_logging()
 
 class UtilsError(Exception):
     """
@@ -78,7 +81,7 @@ def handle_errors(default_return=None, log_exception=True):
             except Exception as e:
                 # Log the exception with traceback if logging is enabled.
                 if log_exception:
-                    logging.exception("Exception in function '%s': %s", func.__name__, e)
+                    logger.exception("Exception in function '%s': %s", func.__name__, e)
                 # Return the specified default value when an error occurs.
                 return default_return
         return wrapper
@@ -112,13 +115,13 @@ class ErrorHandler:
     def __exit__(self, exc_type, exc_val, exc_tb):
         # If an exception occurred, log it.
         if exc_type is not None:
-            logging.exception("Exception caught in context manager: %s", exc_val)
+            logger.exception("Exception caught in context manager: %s", exc_val)
             # Return True if suppressing the exception, False otherwise.
             return self.suppress
         # No exception occurred.
         return False
 
-def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0, exceptions: tuple = (Exception,), logger: logging.Logger = None):
+def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0, exceptions: tuple = (Exception,), logger: logger.Logger = None):
     """
     Decorator for retrying a function if an exception occurs.
 
@@ -139,7 +142,7 @@ def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0, exception
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            _logger = logger or logging.getLogger(func.__module__)
+            _logger = logger or logger.getLogger(func.__module__)
             attempt = 1
             current_delay = delay  # Use a local variable to track delay without modifying the parameter.
             while attempt <= attempts:
@@ -160,7 +163,7 @@ def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0, exception
         return wrapper
     return decorator
 
-def setup_global_exception_hook(logger: logging.Logger = None):
+def setup_global_exception_hook(logger: logger.Logger = None):
     """
     Sets up a global exception hook to log unhandled exceptions.
 
@@ -171,7 +174,7 @@ def setup_global_exception_hook(logger: logging.Logger = None):
         logger (logging.Logger, optional): Logger to use for logging exceptions.
             If not provided, uses logging.getLogger(__name__).
     """
-    _logger = logger or logging.getLogger(__name__)
+    _logger = logger or logger.getLogger(__name__)
 
     def exception_hook(exc_type, exc_value, exc_traceback):
         # For KeyboardInterrupt, call the default exception hook to allow termination.
@@ -185,7 +188,7 @@ def setup_global_exception_hook(logger: logging.Logger = None):
 # Standalone testing block: runs when this script is executed directly.
 if __name__ == "__main__":
     # Configure basic logging for demonstration.
-    logging.basicConfig(level=logging.DEBUG)
+    logger.basicConfig(level=logger.DEBUG)
 
     # Test the handle_errors decorator.
     @handle_errors(default_return="Default Value")
@@ -227,4 +230,4 @@ if __name__ == "__main__":
     setup_global_exception_hook()
 
     # Uncomment the following line to trigger an unhandled exception and see the global hook in action.
-    # raise ValueError("This is an unhandled exception for testing.")
+    raise ValueError("This is an unhandled exception for testing.")
